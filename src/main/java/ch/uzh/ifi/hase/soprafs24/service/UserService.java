@@ -46,10 +46,61 @@ public class UserService {
     // saves the given entity but data is only persisted in the database once
     // flush() is called
     newUser = userRepository.save(newUser);
+    newUser.setStatus(UserStatus.ONLINE);
+    newUser.setIsLoggedIn(true);
     userRepository.flush();
 
     log.debug("Created Information for User: {}", newUser);
     return newUser;
+  }
+
+  public User findByUsername(String username) {
+    List<User> users = userRepository.findAll();
+    User findUser = new User();
+    for (int i=0; i<users.size(); i++){
+      if (users.get(i).getUsername().equals(username)){
+        findUser = users.get(i);
+      }
+    }
+    return findUser;
+  }
+
+  public User updateUser(int id, User user){
+    User reqUser = this.getUserById(id);
+    if (!user.getUsername().isBlank()){
+      checkIfUserExists(user);
+      reqUser.setUsername(user.getUsername());
+    }
+    if (user.getBirthDay() != null){
+      reqUser.setBirthDay(user.getBirthDay());
+    }
+    reqUser.setPassword(this.getUserById(id).getPassword());
+    reqUser.setToken(UUID.randomUUID().toString());
+    reqUser.setStatus(UserStatus.ONLINE);
+    reqUser.setIsLoggedIn(true);
+
+    userRepository.save(reqUser);
+    userRepository.flush();
+    return reqUser;
+  }
+
+  public User getUserById(int id) {
+    List<User> users = userRepository.findAll();
+    User u = new User();
+    for (int i=0; i<users.size(); i++){
+      if (users.get(i).getId() == id){
+        u = users.get(i);
+      }
+    }
+    return u;
+  }
+
+  public User logoutUser(int id){
+    User u = this.getUserById(id);
+    u.setStatus(UserStatus.OFFLINE);
+    u.setIsLoggedIn(false);
+    userRepository.save(u);
+    return u;
   }
 
   /**
@@ -64,16 +115,10 @@ public class UserService {
    */
   private void checkIfUserExists(User userToBeCreated) {
     User userByUsername = userRepository.findByUsername(userToBeCreated.getUsername());
-    User userByName = userRepository.findByName(userToBeCreated.getName());
 
     String baseErrorMessage = "The %s provided %s not unique. Therefore, the user could not be created!";
-    if (userByUsername != null && userByName != null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-          String.format(baseErrorMessage, "username and the name", "are"));
-    } else if (userByUsername != null) {
+    if (userByUsername != null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.format(baseErrorMessage, "username", "is"));
-    } else if (userByName != null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.format(baseErrorMessage, "name", "is"));
     }
   }
 }
