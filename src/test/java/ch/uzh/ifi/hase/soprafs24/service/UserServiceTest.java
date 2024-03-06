@@ -83,4 +83,12 @@ public class UserServiceTest {
     assertThrows(ResponseStatusException.class, () -> userService.createUser(testUser));
   }
 
+  @Test
+    public void logout_user_test() throws Exception {
+      userService.createUser(testUser);
+
+      User u = userService.logoutUser(Math.toIntExact(new Long(testUser.getId())));
+      assertEquals(UserStatus.OFFLINE,u.getStatus());
+  }
+
 }

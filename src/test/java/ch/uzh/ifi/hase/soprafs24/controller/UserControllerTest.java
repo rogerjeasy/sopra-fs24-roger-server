@@ -192,6 +192,18 @@ public class UserControllerTest {
               .andExpect(MockMvcResultMatchers.jsonPath("$.username").value("new"));
   }
 
+  @Test
+    public void logoutUser_ReturnsOkStatus() throws Exception {
+        int userId = 1; // Example user ID
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/users/logout/{id}", userId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        // Verify that userService.logoutUser was called with the correct parameter
+        Mockito.verify(userService).logoutUser(userId); // (3)
+    }
+
   /**
    * Helper Method to convert userPostDTO into a JSON string such that the input
    * can be processed
