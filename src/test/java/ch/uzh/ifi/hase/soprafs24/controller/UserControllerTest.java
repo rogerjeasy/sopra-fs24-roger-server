@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Arrays;
+import java.util.Date;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
@@ -56,6 +57,9 @@ public class UserControllerTest {
 
   private User testUser;
   private UserGetDTO testUserGetDTO;
+
+  @Autowired
+  private ObjectMapper objectMapper;
 
   @MockBean
   private UserService userService;
@@ -174,23 +178,45 @@ public class UserControllerTest {
     }
 
 
+  // @Test
+  // public void update_user_test() throws Exception {
+  //     User user = new User();
+  //     user.setPassword("new");
+  //     user.setUsername("new");
+  //     user.setStatus(UserStatus.OFFLINE);
+
+  //     given(userService.updateUser(1,user)).willReturn(user);
+
+  //     mockMvc.perform(MockMvcRequestBuilders
+  //             .put("/users/{id}", 1)
+  //             .content(asJsonString((user)))
+  //             .contentType(MediaType.APPLICATION_JSON)
+  //             .accept(MediaType.APPLICATION_JSON))
+  //             .andExpect(status().isOk())
+  //             .andExpect(MockMvcResultMatchers.jsonPath("$.username").value("new"));
+  // }
+
   @Test
-  public void update_user_test() throws Exception {
-      User user = new User();
-      user.setPassword("new");
-      user.setUsername("new");
-      user.setStatus(UserStatus.OFFLINE);
+    public void updateUser_ReturnsUpdatedUser() throws Exception {
+        int userId = 1; // Example user ID
+        User inputUser = new User(); // Assume User is your model class. Initialize it properly.
+        inputUser.setUsername("Roger"); // Example property, adjust according to your User class.
 
-      given(userService.updateUser(1,user)).willReturn(user);
+        User updatedUser = new User();
+        Date specificDate = new Date();
+        updatedUser.setUsername("Roger Updated");
+        updatedUser.setBirthDay(specificDate);
 
-      mockMvc.perform(MockMvcRequestBuilders
-              .put("/users/{id}", 1)
-              .content(asJsonString((user)))
-              .contentType(MediaType.APPLICATION_JSON)
-              .accept(MediaType.APPLICATION_JSON))
-              .andExpect(status().isOk())
-              .andExpect(MockMvcResultMatchers.jsonPath("$.username").value("new"));
-  }
+        Mockito.when(userService.updateUser(Mockito.eq(userId), Mockito.any(User.class))).thenReturn(updatedUser); // (4)
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/users/{id}", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(inputUser))) // (5)
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(updatedUser))); // (6)
+
+        Mockito.verify(userService).updateUser(Mockito.eq(userId), Mockito.any(User.class)); // (7)
+    }
 
   @Test
     public void logoutUser_ReturnsOkStatus() throws Exception {
