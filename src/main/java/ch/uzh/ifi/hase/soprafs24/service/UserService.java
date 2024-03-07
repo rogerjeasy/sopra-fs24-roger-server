@@ -45,9 +45,10 @@ public class UserService {
     checkIfUserExists(newUser);
     // saves the given entity but data is only persisted in the database once
     // flush() is called
-    newUser = userRepository.save(newUser);
+    
     newUser.setStatus(UserStatus.ONLINE);
     newUser.setIsLoggedIn(true);
+    newUser = userRepository.save(newUser);
     userRepository.flush();
 
     log.debug("Created Information for User: {}", newUser);
@@ -65,7 +66,7 @@ public class UserService {
     return findUser;
   }
 
-  public User updateUser(int id, User user){
+  public User updateUser(int id, User user) throws Exception {
     User reqUser = this.getUserById(id);
     if (!user.getUsername().isBlank()){
       checkIfUserExists(user);
@@ -95,11 +96,14 @@ public class UserService {
     return u;
   }
 
+  @Transactional
   public User logoutUser(int id){
     User u = this.getUserById(id);
     u.setStatus(UserStatus.OFFLINE);
     u.setIsLoggedIn(false);
     userRepository.save(u);
+    userRepository.flush();
+
     return u;
   }
 
