@@ -86,8 +86,14 @@ public class UserService {
     return newUser;
   }
 
+  public DocumentReference creaDocumentReference() {
+    Firestore db = FirestoreClient.getFirestore();
+    DocumentReference docReference = db.collection("allUsers").document("user");
+    return docReference;
+  }
+
   public User findByUsername(String username) throws Exception{
-    DocumentReference docRef = FirestoreClient.getFirestore().collection("users").document("user");
+    DocumentReference docRef = creaDocumentReference();
 
     User findUser = new User();
 
@@ -110,7 +116,7 @@ public class UserService {
   }
 
   public User getUserById(int id) throws ExecutionException, InterruptedException {
-    DocumentReference docRef = FirestoreClient.getFirestore().collection("users").document("user");
+    DocumentReference docRef = creaDocumentReference();
     ApiFuture<DocumentSnapshot> future = docRef.get();
     DocumentSnapshot document = future.get();
 
@@ -129,7 +135,7 @@ public class UserService {
   }
 
   public List<User> getUsers() throws InterruptedException, ExecutionException {
-    DocumentReference docRef = FirestoreClient.getFirestore().collection("users").document("user");
+    DocumentReference docRef = creaDocumentReference();
     ApiFuture<DocumentSnapshot> future = docRef.get();
     DocumentSnapshot document = future.get();
 
