@@ -71,6 +71,11 @@ public class UserService {
     checkIfUserExists(newUser);
     Long id = next++;
     newUser.setToken(UUID.randomUUID().toString());
+    newUser.setStatus(UserStatus.OFFLINE);
+    checkIfUserExists(newUser);
+    // saves the given entity but data is only persisted in the database once
+    // flush() is called
+    
     newUser.setStatus(UserStatus.ONLINE);
     newUser.setIsLoggedIn(true);
     newUser.setId(id);
@@ -103,7 +108,7 @@ public class UserService {
     return findUser;
   }
 
-  public User getUserById(int id) throws InterruptedException, ExecutionException {
+  public User getUserById(int id) throws ExecutionException, InterruptedException {
     DocumentReference docRef = FirestoreClient.getFirestore().collection("users").document("user");
     ApiFuture<DocumentSnapshot> future = docRef.get();
     DocumentSnapshot document = future.get();
@@ -167,7 +172,7 @@ public class UserService {
   //   User u = this.getUserById(id);
   //   u.setStatus(UserStatus.OFFLINE);
   //   u.setIsLoggedIn(false);
-  //   // userRepository.save(u);
+  //   userRepository.save(u);
   //   userRepository.flush();
 
   //   return u;
