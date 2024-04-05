@@ -21,9 +21,9 @@ import java.util.Objects;
  * - nullable = false -> this cannot be left empty
  * - unique = true -> this value must be unqiue across the database -> composes
  * the primary key
- */
-@Entity
-@Table(name = "USER")
+//  */
+// @Entity
+// @Table(name = "USER")
 public class User implements Serializable {
 
   private static final long serialVersionUID = 1L;
@@ -47,6 +47,9 @@ public class User implements Serializable {
   @Column
   @CreationTimestamp
   private LocalDateTime createDate;
+
+  @Column(nullable = false)
+  private String email;
 
   @DateTimeFormat(pattern = "dd-MM-yyyy")
   @Temporal(TemporalType.DATE)
@@ -124,6 +127,14 @@ public class User implements Serializable {
 
   public void setBirthDay(Date birthDay) {
     this.birthDay = birthDay;
+  }
+
+  public String getEmail() {
+    return email;
+  }
+
+  public void setEmail(String email) {
+    this.email = email;
   }
 
   @Override

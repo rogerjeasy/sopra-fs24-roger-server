@@ -2,7 +2,9 @@ package ch.uzh.ifi.hase.soprafs24.service;
 
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 import ch.uzh.ifi.hase.soprafs24.entity.User;
-import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+// import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
+
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,8 +14,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.google.api.core.ApiFuture;
+import com.google.cloud.Date;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.WriteResult;
+import com.google.firebase.cloud.FirestoreClient;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
 
 /**
  * User Service
@@ -28,84 +45,133 @@ public class UserService {
 
   private final Logger log = LoggerFactory.getLogger(UserService.class);
 
-  private final UserRepository userRepository;
+  // private final UserRepository userRepository;
+  private Map<String, User> docUsers = new HashMap<>();
 
-  @Autowired
-  public UserService(@Qualifier("userRepository") UserRepository userRepository) {
-    this.userRepository = userRepository;
-  }
 
-  public List<User> getUsers() {
-    return this.userRepository.findAll();
-  }
+  @Id
+  @GeneratedValue
+  private Long next=1L;
 
-  public User createUser(User newUser) {
-    newUser.setToken(UUID.randomUUID().toString());
-    newUser.setStatus(UserStatus.OFFLINE);
+  // @Autowired
+  // public UserService(@Qualifier("userRepository") UserRepository userRepository) {
+  //   this.userRepository = userRepository;
+  // }
+
+  // public List<User> getUsers() {
+  //   return this.userRepository.findAll();
+  // }
+
+  public User createUser(User newUser) throws Exception {
+   
+
+    Firestore db = FirestoreClient.getFirestore();
+
+    DocumentReference docReference = db.collection("users").document("user");
     checkIfUserExists(newUser);
-    // saves the given entity but data is only persisted in the database once
-    // flush() is called
-    
+    Long id = next++;
+    newUser.setToken(UUID.randomUUID().toString());
     newUser.setStatus(UserStatus.ONLINE);
     newUser.setIsLoggedIn(true);
-    newUser = userRepository.save(newUser);
-    userRepository.flush();
+    newUser.setId(id);
+    docUsers.put(id.toString(), newUser);
+    ApiFuture<WriteResult> apiFuture = docReference.set(docUsers);
 
     log.debug("Created Information for User: {}", newUser);
     return newUser;
   }
 
-  public User findByUsername(String username) {
-    List<User> users = userRepository.findAll();
+  public User findByUsername(String username) throws Exception{
+    DocumentReference docRef = FirestoreClient.getFirestore().collection("users").document("user");
+
     User findUser = new User();
-    for (int i=0; i<users.size(); i++){
-      if (users.get(i).getUsername().equals(username)){
-        findUser = users.get(i);
+
+    ApiFuture<DocumentSnapshot> future = docRef.get();
+    DocumentSnapshot document = future.get();
+
+    if (document.exists()) {
+      for (User user : docUsers.values()){
+        if (user.getUsername().equals(username)){
+          findUser = user;
+        }
       }
+
+    } else {
+      System.out.println("No such document!");
+    }
+
+    return findUser;
+  }
+
+  public User getUserById(int id) throws InterruptedException, ExecutionException {
+    DocumentReference docRef = FirestoreClient.getFirestore().collection("users").document("user");
+    ApiFuture<DocumentSnapshot> future = docRef.get();
+    DocumentSnapshot document = future.get();
+
+    User findUser = new User();
+    if (document.exists()) {
+      for (User user : docUsers.values()){
+        if (user.getId() == id){
+          findUser = user;
+        }
+      }
+
+    } else {
+      System.out.println("No such document!");
     }
     return findUser;
   }
 
-  public User updateUser(int id, User user) throws Exception {
-    User reqUser = this.getUserById(id);
-    if (!user.getUsername().isBlank()){
-      checkIfUserExists(user);
-      reqUser.setUsername(user.getUsername());
-    }
-    if (user.getBirthDay() != null){
-      reqUser.setBirthDay(user.getBirthDay());
-    }
-    reqUser.setPassword(this.getUserById(id).getPassword());
-    reqUser.setToken(UUID.randomUUID().toString());
-    reqUser.setStatus(UserStatus.ONLINE);
-    reqUser.setIsLoggedIn(true);
+  public List<User> getUsers() throws InterruptedException, ExecutionException {
+    DocumentReference docRef = FirestoreClient.getFirestore().collection("users").document("user");
+    ApiFuture<DocumentSnapshot> future = docRef.get();
+    DocumentSnapshot document = future.get();
 
-    userRepository.save(reqUser);
-    userRepository.flush();
-    return reqUser;
-  }
+    List<User> users = new ArrayList<>();
 
-  public User getUserById(int id) {
-    List<User> users = userRepository.findAll();
-    User u = new User();
-    for (int i=0; i<users.size(); i++){
-      if (users.get(i).getId() == id){
-        u = users.get(i);
+    if (document.exists()) {
+      for (User user : docUsers.values()){
+        users.add(user);
       }
+
+    } else {
+      System.out.println("No such document!");
     }
-    return u;
+    return users;
   }
 
-  @Transactional
-  public User logoutUser(int id){
-    User u = this.getUserById(id);
-    u.setStatus(UserStatus.OFFLINE);
-    u.setIsLoggedIn(false);
-    userRepository.save(u);
-    userRepository.flush();
 
-    return u;
-  }
+
+  // public User updateUser(int id, User user) throws Exception {
+  //   User reqUser = this.getUserById(id);
+  //   if (!user.getUsername().isBlank()){
+  //     checkIfUserExists(user);
+  //     reqUser.setUsername(user.getUsername());
+  //   }
+  //   if (user.getBirthDay() != null){
+  //     reqUser.setBirthDay(user.getBirthDay());
+  //   }
+  //   reqUser.setPassword(this.getUserById(id).getPassword());
+  //   reqUser.setToken(UUID.randomUUID().toString());
+  //   reqUser.setStatus(UserStatus.ONLINE);
+  //   reqUser.setIsLoggedIn(true);
+
+  //   userRepository.save(reqUser);
+  //   userRepository.flush();
+  //   return reqUser;
+  // }
+
+
+  // @Transactional
+  // public User logoutUser(int id){
+  //   User u = this.getUserById(id);
+  //   u.setStatus(UserStatus.OFFLINE);
+  //   u.setIsLoggedIn(false);
+  //   // userRepository.save(u);
+  //   userRepository.flush();
+
+  //   return u;
+  // }
 
   /**
    * This is a helper method that will check the uniqueness criteria of the
@@ -114,15 +180,18 @@ public class UserService {
    * and throw an error otherwise.
    *
    * @param userToBeCreated
+   * @throws Exception 
    * @throws org.springframework.web.server.ResponseStatusException
    * @see User
    */
-  private void checkIfUserExists(User userToBeCreated) {
-    User userByUsername = userRepository.findByUsername(userToBeCreated.getUsername());
+  private void checkIfUserExists(User userToBeCreated) throws Exception {
+    User userByUsername = findByUsername(userToBeCreated.getUsername());
 
     String baseErrorMessage = "The %s provided %s not unique. Therefore, the user could not be created!";
-    if (userByUsername != null) {
+    if (userByUsername.getUsername() != null) {
+      
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.format(baseErrorMessage, "username", "is"));
     }
   }
+
 }
