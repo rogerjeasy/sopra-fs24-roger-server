@@ -62,13 +62,16 @@ public class UserService {
   //   return this.userRepository.findAll();
   // }
 
+  public DocumentReference creaDocumentReference() {
+    Firestore db = FirestoreClient.getFirestore();
+    DocumentReference docReference = db.collection("allUsers").document("user");
+    return docReference;
+  }
+
   public User createUser(User newUser) throws Exception {
    
-
-    Firestore db = FirestoreClient.getFirestore();
-
-    DocumentReference docReference = db.collection("users").document("user");
-    checkIfUserExists(newUser);
+    DocumentReference docReference = creaDocumentReference();
+    // checkIfUserExists(newUser);
     Long id = next++;
     newUser.setToken(UUID.randomUUID().toString());
     newUser.setStatus(UserStatus.OFFLINE);
@@ -84,12 +87,6 @@ public class UserService {
 
     log.debug("Created Information for User: {}", newUser);
     return newUser;
-  }
-
-  public DocumentReference creaDocumentReference() {
-    Firestore db = FirestoreClient.getFirestore();
-    DocumentReference docReference = db.collection("allUsers").document("user");
-    return docReference;
   }
 
   public User findByUsername(String username) throws Exception{
