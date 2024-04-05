@@ -71,7 +71,7 @@ public class UserService {
   public User createUser(User newUser) throws Exception {
    
     DocumentReference docReference = creaDocumentReference();
-    // checkIfUserExists(newUser);
+    checkIfUserExists(newUser);
     Long id = next++;
     newUser.setToken(UUID.randomUUID().toString());
     newUser.setStatus(UserStatus.OFFLINE);

@@ -31,6 +31,7 @@ public class FirebaseConfig {
             FirebaseApp.initializeApp(options);
 
         } catch (Exception e) {
+            System.out.println("Error about not being able to load firebase key: " + e.getMessage());
             e.printStackTrace();
         }
     }
