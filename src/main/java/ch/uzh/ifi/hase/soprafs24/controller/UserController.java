@@ -9,6 +9,7 @@ import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 // import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +39,11 @@ public class UserController {
   public List<UserGetDTO> getAllUsers() throws InterruptedException, ExecutionException {
     // fetch all users in the internal representation
     List<User> users = userService.getUsers();
+
+    if (users.isEmpty()) {
+      HttpStatus status = HttpStatus.NO_CONTENT;
+      throw new ResponseStatusException(status, "No users found");
+    }
     
     List<UserGetDTO> userGetDTOs = new ArrayList<>();
 
@@ -58,6 +64,11 @@ public class UserController {
 
     // create user
     User createdUser = userService.createUser(userInput);
+
+    if (createdUser == null) {
+      HttpStatus status = HttpStatus.BAD_REQUEST;
+      throw new ResponseStatusException(status, "User could not be created");
+    }
     // convert internal representation of user back to API
     return DTOMapper.INSTANCE.convertEntityToUserGetDTO(createdUser);
   }
@@ -71,16 +82,20 @@ public class UserController {
     User userInput = DTOMapper.INSTANCE.convertUserPostDTOtoEntity(userPostDTO);
 
     User u = userService.createUser(userInput);
+    if (u == null) {
+      HttpStatus status = HttpStatus.BAD_REQUEST;
+      throw new ResponseStatusException(status, "User could not be created");
+    }
     return DTOMapper.INSTANCE.convertEntityToUserGetDTO(u);
   }
 
   @GetMapping("/users/{id}")
   @ResponseStatus(HttpStatus.OK)
   @ResponseBody
-  public User findUser(@PathVariable int id) throws InterruptedException, ExecutionException {
+  public UserGetDTO findUser(@PathVariable int id) throws InterruptedException, ExecutionException {
     User user = userService.getUserById(id);
-    return user;
-    // return DTOMapper.INSTANCE.convertEntityToUserGetDTO(user);
+    // return user;
+    return DTOMapper.INSTANCE.convertEntityToUserGetDTO(user);
   }
 
   // @PutMapping("/users/{id}")

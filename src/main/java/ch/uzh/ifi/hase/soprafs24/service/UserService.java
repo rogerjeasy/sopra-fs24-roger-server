@@ -98,6 +98,7 @@ public class UserService {
       for (User user : docUsers.values()){
         if (user.getUsername().equals(username)){
           findUser = user;
+          return findUser;
         }
       }
 
@@ -105,7 +106,7 @@ public class UserService {
       System.out.println("No such document!");
     }
 
-    return findUser;
+    return null;
   }
 
   public User getUserById(int id) throws ExecutionException, InterruptedException {
@@ -193,7 +194,7 @@ public class UserService {
     User userByUsername = findByUsername(userToBeCreated.getUsername());
 
     String baseErrorMessage = "The %s provided %s not unique. Therefore, the user could not be created!";
-    if (userByUsername.getUsername() != null) {
+    if (userByUsername != null) {
       
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.format(baseErrorMessage, "username", "is"));
     }
