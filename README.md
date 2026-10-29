@@ -1,87 +1,114 @@
-# SoPra RESTful Service FS24
+# SoPra FS24 User Management Server
 
-## Getting started with Spring Boot
--   Documentation: https://docs.spring.io/spring-boot/docs/current/reference/html/index.html
--   Guides: http://spring.io/guides
-    -   Building a RESTful Web Service: http://spring.io/guides/gs/rest-service/
-    -   Building REST services with Spring: https://spring.io/guides/tutorials/rest/
+A Spring Boot REST service for user registration, login and user lookup, written for the individual assignment of the Software Engineering Lab (SoPra) at the University of Zurich, spring semester 2024. It started from the course's server template; the owner then replaced the template's JPA/H2 user repository with Google Cloud Firestore accessed through the Firebase Admin SDK.
 
-## Setup this Template with your IDE of choice
-Download your IDE of choice (e.g., [IntelliJ](https://www.jetbrains.com/idea/download/), [Visual Studio Code](https://code.visualstudio.com/), or [Eclipse](http://www.eclipse.org/downloads/)). Make sure Java 17 is installed on your system (for Windows, please make sure your `JAVA_HOME` environment variable is set to the correct version of Java).
+The matching front end is [sopra-fs24-roger-client](https://github.com/rogerjeasy/sopra-fs24-roger-client).
 
-### IntelliJ
-If you consider to use IntelliJ as your IDE of choice, you can make use of your free educational license [here](https://www.jetbrains.com/community/education/#students).
-1. File -> Open... -> SoPra server template
-2. Accept to import the project as a `gradle project`
-3. To build right click the `build.gradle` file and choose `Run Build`
+## Status
 
-### VS Code
-The following extensions can help you get started more easily:
--   `vmware.vscode-spring-boot`
--   `vscjava.vscode-spring-initializr`
--   `vscjava.vscode-spring-boot-dashboard`
--   `vscjava.vscode-java-pack`
+Work in progress. During the move to Firestore, the update-profile and logout endpoints (and most of the unit tests) were commented out, and the login endpoint was left calling the registration logic. The client still calls the missing endpoints. See [Known gaps](#known-gaps).
 
-**Note:** You'll need to build the project first with Gradle, just click on the `build` command in the _Gradle Tasks_ extension. Then check the _Spring Boot Dashboard_ extension if it already shows `soprafs24` and hit the play button to start the server. If it doesn't show up, restart VS Code and check again.
+## REST API
 
-## Building with Gradle
-You can use the local Gradle Wrapper to build the application.
--   macOS: `./gradlew`
--   Linux: `./gradlew`
--   Windows: `./gradlew.bat`
+All endpoints are defined in `src/main/java/ch/uzh/ifi/hase/soprafs24/controller/UserController.java` (plus a health route in `Application.java`). CORS is open to all origins and methods.
 
-More Information about [Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html) and [Gradle](https://gradle.org/docs/).
+| Method | Path | Success | Errors | Notes |
+|---|---|---|---|---|
+| GET | `/` | 200 | | Returns the plain-text message "The application is running." |
+| GET | `/users` | 200 | 204 when no users exist | Lists all users. |
+| POST | `/users` | 201 | 400 when the username is taken | Registers a user from `{ "username", "password" }`. Sets a random token and status `ONLINE`. |
+| POST | `/users/login` | 200 | 400 when the username is taken | Currently runs the same code as registration (see Known gaps). |
+| GET | `/users/{id}` | 200 | | Returns one user. An unknown id returns an empty user, not 404. |
+| PUT | `/users/{id}` | | 405 | Commented out. |
+| POST | `/users/logout/{id}` | | 404 | Commented out. |
 
-### Build
+User responses (`UserGetDTO`) contain `id`, `username`, `password`, `status` (`ONLINE`/`OFFLINE`), `isLoggedIn`, `createDate` and `birthDay`.
 
-```bash
-./gradlew build
+## Tech stack
+
+- Java 17, Spring Boot 2.4 (Web, Data JPA starter still on the classpath), MapStruct for DTO mapping
+- Firebase Admin SDK 9.2 (Cloud Firestore), java-dotenv for configuration
+- H2 in-memory database configured in `application.properties` (left over from the template; no JPA entities are active)
+- JUnit 5, Mockito, Spring MockMvc
+- Gradle 7.6 wrapper, Google App Engine standard (`app.yaml`), GitHub Actions
+
+## Project structure
+
+```
+src/main/java/ch/uzh/ifi/hase/soprafs24/
+  Application.java          entry point, "/" route, CORS config
+  controller/               UserController (REST endpoints)
+  service/                  UserService (Firestore access, user logic)
+  firebaseConfig/           FirebaseConfig (initialises the Firebase app at startup)
+  entity/  rest/dto/  rest/mapper/  constant/  exceptions/
+src/test/java/...           controller, mapper, service and repository tests
+app.yaml                    App Engine config
+.github/workflows/          deploy (main.yml) and PR test (pr.yml) workflows
 ```
 
-### Run
+## Getting started
 
-```bash
-./gradlew bootRun
+### Prerequisites
+
+- Java 17 (on Windows, set `JAVA_HOME` to it)
+- A Firebase project with Cloud Firestore and a service-account key file
+
+The Gradle wrapper is included, so no separate Gradle install is needed (`./gradlew` on macOS/Linux, `gradlew.bat` on Windows).
+
+### Configuration
+
+`FirebaseConfig` reads one variable from a `.env` file in the working directory (the project root when run with Gradle):
+
+```
+FIREBASE_CONFIG=<path to your Firebase service-account JSON file>
 ```
 
-You can verify that the server is running by visiting `localhost:8080` in your browser.
+`.env` is git-ignored; keep the key file out of the repository too. Without the file the server still starts and `GET /` works, but Firebase is not initialised and the `/users` endpoints answer 409.
 
-### Test
+### Build, run and develop
+
+```bash
+./gradlew build      # compile and run tests
+./gradlew bootRun    # start on http://localhost:8080
+```
+
+Development mode with automatic rebuild and reload: run `./gradlew build --continuous` (add `-xtest` to skip tests) in one terminal and `./gradlew bootRun` in another.
+
+To debug, start the server with `./gradlew bootRun --debug-jvm` and attach a remote debugger from your IDE.
+
+### IDE setup
+
+- IntelliJ: File > Open the project folder and import it as a Gradle project.
+- VS Code: install `vmware.vscode-spring-boot`, `vscjava.vscode-spring-initializr`, `vscjava.vscode-spring-boot-dashboard` and `vscjava.vscode-java-pack`, build once with the Gradle Tasks extension, then start `soprafs24` from the Spring Boot Dashboard.
+
+## Tests
 
 ```bash
 ./gradlew test
 ```
 
-### Development Mode
-You can start the backend in development mode, this will automatically trigger a new build and reload the application
-once the content of a file has been changed.
+Three tests are active and pass: `DTOMapperTest` (two mapping tests) and `UserControllerTest.createUser_validInput_userCreated`, which mocks `UserService` and checks that `POST /users` returns 201. The service and repository tests are commented out.
 
-Start two terminal windows and run:
+## Deployment
 
-`./gradlew build --continuous`
+- `app.yaml` targets the App Engine standard environment (`runtime: java17`, instance class F2).
+- `.github/workflows/main.yml` deploys to App Engine on every push to `main`, using a `GCP_SERVICE_CREDENTIALS` repository secret. Its test and SonarQube job is commented out, and the SonarQube keys in `build.gradle` are placeholders.
+- `.github/workflows/pr.yml` builds and tests pull requests against `main` with Java 17.
 
-and in the other one:
+The App Engine deployment from the course is no longer running.
 
-`./gradlew bootRun`
+## Known gaps
 
-If you want to avoid running all tests with every change, use the following command instead:
+- `PUT /users/{id}` (profile edit) and `POST /users/logout/{id}` are commented out in both the controller and the service, but the client's Edit Profile page and Logout button still call them.
+- `POST /users/login` calls `createUser`, so it rejects existing usernames with 400 and registers new ones. Passwords are never checked.
+- All users are kept in an in-memory map in `UserService` and written as a single Firestore document (`allUsers/user`). Reads come from that map, so users are lost when the server restarts.
+- The user response includes the password but not the token, and no endpoint checks a token.
+- `createDate` is never set, because `@CreationTimestamp` only works with JPA persistence.
 
-`./gradlew build --continuous -xtest`
+## Context
 
-## API Endpoint Testing with Postman
-We recommend using [Postman](https://www.getpostman.com) to test your API Endpoints.
+Built on the server template from the University of Zurich SoPra course (Software Engineering Lab, FS24). The template provided the Spring Boot project layout, Gradle setup, App Engine configuration and workflows; the login and profile features, the Firestore integration and the changes to the template's user endpoints are the owner's own work.
 
-## Debugging
-If something is not working and/or you don't know what is going on. We recommend using a debugger and step-through the process step-by-step.
+## License
 
-To configure a debugger for SpringBoot's Tomcat servlet (i.e. the process you start with `./gradlew bootRun` command), do the following:
-
-1. Open Tab: **Run**/Edit Configurations
-2. Add a new Remote Configuration and name it properly
-3. Start the Server in Debug mode: `./gradlew bootRun --debug-jvm`
-4. Press `Shift + F9` or the use **Run**/Debug "Name of your task"
-5. Set breakpoints in the application where you need it
-6. Step through the process one step at a time
-
-## Testing
-Have a look here: https://www.baeldung.com/spring-boot-testing
+Apache License 2.0, see [LICENSE](LICENSE).
